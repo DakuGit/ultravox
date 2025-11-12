@@ -12,7 +12,24 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
+      # ---- Aggressive disk cleanup to avoid "No space left on device" ----
+      - name: Free disk space on runner
+        run: |
+          echo "Before cleanup:" && df -h
+          sudo docker system prune -af || true
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /usr/local/lib/android \
+            /opt/hostedtoolcache/CodeQL \
+            /opt/hostedtoolcache/go \
+            "$AGENT_TOOLSDIRECTORY" || true
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+          echo "After cleanup:" && df -h
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -28,6 +45,7 @@ jobs:
         with:
           driver: docker-container
 
+      # Keep the build lean: no cache export, single tag, direct push
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -35,4 +53,4 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ghcr.io/dakugit/ultravox:0.6-llama3-1-8b
-
+          provenance: false
